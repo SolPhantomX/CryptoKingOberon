@@ -77,4 +77,4 @@ You can close the tab or install as PWA — the King will find you.
 **One button on the surface.**  
 **Powerful, careful, and user-protecting engine under the hood.**
 
-We will never sacrifice simplicity for features.
+ We will never sacrifice simplicity for features.
