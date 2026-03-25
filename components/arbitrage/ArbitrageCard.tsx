@@ -1,13 +1,11 @@
-// components/arbitrage/ArbitrageCard.tsx
-
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '../ui/card';
+import { Button } from '../ui/button';
+import { Badge } from '../ui/badge';
 import { TrendingUp, TrendingDown, Loader2, Info } from 'lucide-react';
-import { useArbitrage } from '@/hooks/useArbitrage';
+import { useArbitrage } from '../../hooks/useArbitrage';
 
 export function ArbitrageCard() {
   const { data: opportunity, isLoading, error, mutate } = useArbitrage(1);
@@ -96,7 +94,6 @@ export function ArbitrageCard() {
           className="w-full h-12 text-lg bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 disabled:opacity-50"
           disabled={!isProfitable}
           onClick={() => {
-            // TODO: Open Jupiter swap modal
             console.log('Claim profit clicked', opportunity.quote);
           }}
         >
