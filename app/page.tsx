@@ -1,6 +1,4 @@
-// app/page.tsx
-
-import { ArbitrageCard } from '@/components/arbitrage/ArbitrageCard';
+import { ArbitrageCard } from '../components/arbitrage/ArbitrageCard';
 
 export default function Home() {
   return (
