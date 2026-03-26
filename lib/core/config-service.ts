@@ -9,43 +9,39 @@ export interface FeeConfig {
   estimatedSlippagePercent: number;
   priceImpactPer1kUSD: number;
   lastUpdated: number;
-  ttlMs: number; // Time-to-live for cache
+  ttlMs: number;
 }
 
 export interface FeeSource {
   fetch(): Promise<Partial<FeeConfig>>;
-  priority: number; // Higher = more authoritative
+  priority: number;
 }
 
 // ===== DATA SOURCES =====
 
-// 1. CoinGecko / Binance — SOL price
 export class PriceSource implements FeeSource {
   priority = 10;
   
   async fetch(): Promise<Partial<FeeConfig>> {
     try {
-      // Fallback: CoinGecko (no API key needed)
       const response = await fetch(
         'https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd',
-        { next: { revalidate: 10 } } // Next.js: refresh every 10s
+        { next: { revalidate: 10 } }
       );
       const data = await response.json();
       return { solPriceUSD: data.solana.usd };
     } catch (e) {
       console.warn('PriceSource failed, using fallback');
-      return { solPriceUSD: 87.60 }; // Safe fallback
+      return { solPriceUSD: 87.60 };
     }
   }
 }
 
-// 2. Binance API — trading fees
 export class BinanceFeeSource implements FeeSource {
   priority = 8;
   
   async fetch(): Promise<Partial<FeeConfig>> {
     try {
-      // Public endpoint for fee schedule (no auth)
       const response = await fetch(
         'https://api.binance.com/api/v3/tradeFee?symbol=SOLUSDT',
         { headers: { 'X-MBX-APIKEY': process.env.BINANCE_API_KEY || '' } }
@@ -54,18 +50,16 @@ export class BinanceFeeSource implements FeeSource {
         const [fee] = await response.json();
         return {
           cexFeePercent: parseFloat(fee.makerCommission) / 100,
-          withdrawalFeeSOL: 0.0005, // Binance SOL withdrawal (stable)
+          withdrawalFeeSOL: 0.0005,
         };
       }
     } catch (e) {
       console.warn('BinanceFeeSource failed');
     }
-    // Fallback defaults
     return { cexFeePercent: 0.001, withdrawalFeeSOL: 0.0005 };
   }
 }
 
-// 3. Solana RPC — network fees
 export class SolanaFeeSource implements FeeSource {
   priority = 7;
   private rpcUrl: string;
@@ -83,40 +77,37 @@ export class SolanaFeeSource implements FeeSource {
           jsonrpc: '2.0',
           id: 1,
           method: 'getRecentPrioritizationFees',
-          params: [[]], // All accounts
+          params: [[]],
         }),
       });
       const data = await response.json();
       const fees = data.result as Array<{ prioritizationFee: number }>;
       
-      // Median fee in lamports → USD
       const medianFeeLamports = fees.length > 0 
         ? fees.sort((a, b) => a.prioritizationFee - b.prioritizationFee)[Math.floor(fees.length / 2)].prioritizationFee
-        : 5000; // Default 5000 lamports
+        : 5000;
         
-      const solPrice = await new PriceSource().fetch();
+      const priceSource = new PriceSource();
+      const solPrice = await priceSource.fetch();
       const networkFeeUSD = (medianFeeLamports / 1e9) * (solPrice.solPriceUSD || 87.60);
       
       return { networkFeeUSD };
     } catch (e) {
       console.warn('SolanaFeeSource failed');
-      return { networkFeeUSD: 0.001 }; // Fallback: $0.001
+      return { networkFeeUSD: 0.001 };
     }
   }
 }
 
-// 4. Jupiter Quote — slippage & price impact (calculated on-the-fly)
 export class JupiterSlippageSource implements FeeSource {
-  priority = 5; // Lowest: slippage is quote-specific
+  priority = 5;
   
   async fetch(): Promise<Partial<FeeConfig>> {
-    // Slippage cannot be pre-calculated globally — it's in the quote
-    // Return default for pre-check
     return { estimatedSlippagePercent: 0.005 };
   }
 }
 
-// ===== SERVICE: aggregation + cache =====
+// ===== SERVICE =====
 
 export class DynamicFeeMonitor {
   private sources: FeeSource[];
@@ -130,7 +121,7 @@ export class DynamicFeeMonitor {
     estimatedSlippagePercent: 0.005,
     priceImpactPer1kUSD: 0.0002,
     lastUpdated: 0,
-    ttlMs: 10_000, // 10 seconds cache
+    ttlMs: 10_000,
   };
 
   constructor(sources: FeeSource[] = []) {
@@ -146,25 +137,22 @@ export class DynamicFeeMonitor {
   async getConfig(forceRefresh = false): Promise<FeeConfig> {
     const now = Date.now();
     
-    // Return cached if still valid
     if (!forceRefresh && this.cache && (now - this.cache.lastUpdated) < this.cache.ttlMs) {
       return this.cache;
     }
 
-    // Fetch from all sources in parallel
     const results = await Promise.allSettled(
       this.sources.map(src => src.fetch())
     );
 
-    // Merge: higher priority sources override lower
     const merged: Partial<FeeConfig> = {};
     for (let i = this.sources.length - 1; i >= 0; i--) {
-      if (results[i].status === 'fulfilled') {
-        Object.assign(merged, results[i].value);
+      const result = results[i];
+      if (result.status === 'fulfilled') {
+        Object.assign(merged, result.value);
       }
     }
 
-    // Build final config with fallbacks
     const config: FeeConfig = {
       ...this.defaultConfig,
       ...merged,
@@ -175,12 +163,10 @@ export class DynamicFeeMonitor {
     return config;
   }
 
-  // Helper: get real-time SOL price
   async getSolPrice(): Promise<number> {
     const config = await this.getConfig();
     return config.solPriceUSD;
   }
 }
 
-// Singleton export
 export const feeMonitor = new DynamicFeeMonitor();
