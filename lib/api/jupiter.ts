@@ -1,15 +1,30 @@
 // lib/api/jupiter.ts
 
 import { PublicKey } from '@solana/web3.js';
-import type { QuoteResponse } from '@jup-ag/api';
 
 const JUPITER_QUOTE_API = 'https://quote-api.jup.ag/v6';
 const MAX_RETRIES = 2;
 
+export interface QuoteResponse {
+  inputMint: string;
+  outputMint: string;
+  inAmount: string;
+  outAmount: string;
+  priceImpactPct?: number;
+  routePlan?: any[];
+  otherRouteQuotes?: any[];
+  slippageBps?: number;
+  platformFee?: any;
+  timeTaken?: number;
+  contextSlot?: number;
+  otherAmountThreshold?: string;
+  swapMode?: 'ExactIn' | 'ExactOut';
+}
+
 export interface JupiterQuoteParams {
   inputMint: string;
   outputMint: string;
-  amount: number; // in lamports
+  amount: number;
   slippageBps?: number;
 }
 
@@ -29,9 +44,7 @@ export async function fetchJupiterQuote(params: JupiterQuoteParams): Promise<Quo
 
       const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
+        headers: { 'Accept': 'application/json' },
       });
 
       if (!response.ok) {
