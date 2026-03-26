@@ -19,7 +19,7 @@ export interface ArbitrageOpportunity extends NetProfitCalculation {
   isProfitable: boolean;
   suggestedAction: string;
   buttonEnabled: boolean;
-  minProfitThresholdUSD: number; // For UI display
+  minProfitThresholdUSD: number;
 }
 
 const TOKENS = {
@@ -39,8 +39,8 @@ export async function getArbitrageOpportunity(
   const spreadPercent = ((binancePrice - jupiterPrice) / jupiterPrice) * 100;
   const spreadUSD = Math.abs(binancePrice - jupiterPrice) * amountSOL;
   
-  // 🔥 UNIVERSAL CALCULATION for any volume
-  const profitMetrics = await calculateProfitability(amountSOL);
+  // 🔥 UNIVERSAL CALCULATION - pass BOTH amount AND price
+  const profitMetrics = await calculateProfitability(amountSOL, binancePrice);
   
   const profitDetails = calculateNetProfit(amountSOL, binancePrice, spreadPercent, 'SOL');
   const networkCompat = checkNetworkCompatibility('SOL', 'SOL');
@@ -51,8 +51,8 @@ export async function getArbitrageOpportunity(
     && liquidity.level !== 'low' 
     && networkCompat.isCompatible;
   
-  // ✅ Smart message for UI
-  const profitMessage = await getProfitabilityMessage(amountSOL, spreadUSD);
+  // ✅ Smart message for UI - pass amount, price, AND spread
+  const profitMessage = await getProfitabilityMessage(amountSOL, binancePrice, spreadUSD);
   let suggestedAction = '';
   
   if (!networkCompat.isCompatible) {
