@@ -1,7 +1,5 @@
-// app/api/arbitrage/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
-import { getArbitrageOpportunity } from '@/lib/core/price-engine';
+import { getArbitrageOpportunity } from '../../../lib/core/price-engine';
 
 export async function GET(request: NextRequest) {
   try {
