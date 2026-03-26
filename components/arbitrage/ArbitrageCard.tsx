@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useCallback, useMemo, memo } from 'react';
-import { Card, CardContent } from '../../ui/card';
-import { Button } from '../../ui/button';
-import { Badge } from '../../ui/badge';
+import { Card, CardContent } from '../ui/card';
+import { Button } from '../ui/button';
+import { Badge } from '../ui/badge';
 import { TrendingUp, TrendingDown, Loader2, Info, RefreshCw } from 'lucide-react';
 import { useArbitrage } from '../../hooks/useArbitrage';
 
