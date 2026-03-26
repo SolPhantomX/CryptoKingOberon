@@ -1,11 +1,14 @@
+// components/arbitrage/ArbitrageCard.tsx
+
 'use client';
 
-import { useState, useCallback, useMemo, memo } from 'react';
+import { useState, useCallback, useMemo, memo, useEffect } from 'react';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { TrendingUp, TrendingDown, Loader2, Info, RefreshCw } from 'lucide-react';
+import { TrendingUp, TrendingDown, Loader2, Info } from 'lucide-react';
 import { useArbitrage } from '../../hooks/useArbitrage';
+import { SoundNotification } from '../SoundNotification';
 
 const PriceColumn = memo(({ label, price }: { label: string; price: number }) => (
   <div className="text-center">
@@ -17,8 +20,10 @@ const PriceColumn = memo(({ label, price }: { label: string; price: number }) =>
 PriceColumn.displayName = 'PriceColumn';
 
 export const ArbitrageCard = memo(() => {
-  const { data: opportunity, isLoading, error, mutate, isValidating } = useArbitrage(1);
+  const {  opportunity, isLoading, error, mutate, isValidating } = useArbitrage(1);
   const [showDetails, setShowDetails] = useState(false);
+  const [shouldPlaySound, setShouldPlaySound] = useState(false);
+  const [prevProfitable, setPrevProfitable] = useState(false);
 
   const handleRefresh = useCallback(() => {
     mutate();
@@ -31,9 +36,19 @@ export const ArbitrageCard = memo(() => {
   }, [opportunity?.quote]);
 
   const isProfitable = useMemo(() => 
-    opportunity?.buttonEnabled ?? false, 
-    [opportunity?.buttonEnabled]
+    opportunity?.isProfitable ?? false, 
+    [opportunity?.isProfitable]
   );
+
+  // 🔊 Play sound when profitable opportunity appears
+  useEffect(() => {
+    if (isProfitable && !prevProfitable && !isLoading) {
+      setShouldPlaySound(true);
+      // Reset after 1 second
+      setTimeout(() => setShouldPlaySound(false), 1000);
+    }
+    setPrevProfitable(isProfitable);
+  }, [isProfitable, prevProfitable, isLoading]);
 
   if (isLoading) {
     return (
@@ -60,108 +75,113 @@ export const ArbitrageCard = memo(() => {
   }
 
   return (
-    <Card className={`max-w-md mx-auto transition-all bg-[#1A1A2E] border ${
-      isProfitable 
-        ? 'border-green-500/50 shadow-lg shadow-green-500/10' 
-        : 'border-purple-500/20'
-    }`}>
-      <CardContent className="pt-6">
-        {/* Header */}
-        <div className="text-center mb-4">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <span className="text-2xl">👑</span>
-            <Badge variant="outline" className="text-purple-400 border-purple-500">
-              OBERON
-            </Badge>
-            {isValidating && <Loader2 className="h-3 w-3 animate-spin text-purple-400" />}
-          </div>
-          <p className="text-xs text-gray-500">{opportunity.pair}</p>
-        </div>
+    <>
+      {/* 🔊 Sound notification */}
+      <SoundNotification playSound={shouldPlaySound} volume={0.7} />
 
-        {/* Price columns */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <PriceColumn label="Binance" price={opportunity.binancePrice} />
-          <PriceColumn label="Jupiter" price={opportunity.jupiterPrice} />
-        </div>
-
-        {/* Spread indicator */}
-        <div className="flex items-center justify-center gap-2 mb-4">
-          {opportunity.spreadPercent > 0 ? (
-            <>
-              <TrendingUp className="h-5 w-5 text-green-500" />
-              <span className="text-xl font-bold text-green-500">
-                +{opportunity.spreadPercent.toFixed(2)}%
-              </span>
-            </>
-          ) : (
-            <>
-              <TrendingDown className="h-5 w-5 text-red-500" />
-              <span className="text-xl font-bold text-red-500">
-                {opportunity.spreadPercent.toFixed(2)}%
-              </span>
-            </>
-          )}
-        </div>
-
-        {/* Action message */}
-        <div className={`text-center mb-4 p-3 rounded-lg border ${
-          isProfitable 
-            ? 'bg-green-900/20 border-green-500/30' 
-            : 'bg-purple-900/20 border-purple-500/20'
-        }`}>
-          <p className={`text-lg font-semibold ${isProfitable ? 'text-green-400' : 'text-gray-400'}`}>
-            {opportunity.suggestedAction}
-          </p>
-        </div>
-
-        {/* Main button */}
-        <Button
-          className="w-full h-12 text-lg bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 disabled:opacity-50"
-          disabled={!isProfitable || isValidating}
-          onClick={handleClaim}
-        >
-          {isValidating ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              Updating...
-            </>
-          ) : isProfitable ? (
-            '💰 Claim Profit'
-          ) : (
-            '💤 Waiting for Signal'
-          )}
-        </Button>
-
-        {/* Details toggle */}
-        <div className="mt-4 text-center">
-          <button
-            onClick={() => setShowDetails(!showDetails)}
-            className="text-xs text-gray-500 hover:text-purple-400 transition flex items-center justify-center gap-1 mx-auto"
-          >
-            <Info className="h-3 w-3" />
-            {showDetails ? 'Hide details' : 'Why this amount?'}
-          </button>
-
-          {showDetails && (
-            <div className="mt-3 text-xs text-left text-gray-400 space-y-1 p-3 bg-purple-900/10 rounded-lg border border-purple-500/10">
-              <p>📊 Net profit: <span className="text-green-400">${opportunity.netProfitUSD.toFixed(2)}</span> ({opportunity.netProfitPercent.toFixed(1)}%)</p>
-              <p>💸 Trading fees: ${opportunity.tradingFeesUSD.toFixed(2)}</p>
-              <p>🚚 Withdrawal fee: ${opportunity.withdrawalFeeUSD.toFixed(2)}</p>
-              <p>⛽ Gas fee: ${opportunity.gasFeeUSD.toFixed(4)}</p>
-              <p>{opportunity.liquidity.message}</p>
-              {opportunity.networkCompatibility.warning && (
-                <p className="text-yellow-500">{opportunity.networkCompatibility.warning}</p>
-              )}
+      <Card className={`max-w-md mx-auto transition-all bg-[#1A1A2E] border ${
+        isProfitable 
+          ? 'border-green-500/50 shadow-lg shadow-green-500/10' 
+          : 'border-purple-500/20'
+      }`}>
+        <CardContent className="pt-6">
+          {/* Header with small logo */}
+          <div className="text-center mb-4">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <img src="/logo.png" alt="Oberon" className="w-10 h-10 rounded-full" />
+              <Badge variant="outline" className="text-purple-400 border-purple-500">
+                OBERON
+              </Badge>
+              {isValidating && <Loader2 className="h-3 w-3 animate-spin text-purple-400" />}
             </div>
-          )}
-        </div>
+            <p className="text-xs text-gray-500">{opportunity.pair}</p>
+          </div>
 
-        {/* Footer */}
-        <p className="text-center text-xs text-gray-600 mt-6">
-          Sleep. We hunt.
-        </p>
-      </CardContent>
-    </Card>
+          {/* Price columns */}
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <PriceColumn label="Binance" price={opportunity.binancePrice} />
+            <PriceColumn label="Jupiter" price={opportunity.jupiterPrice} />
+          </div>
+
+          {/* Spread indicator */}
+          <div className="flex items-center justify-center gap-2 mb-4">
+            {opportunity.spreadPercent > 0 ? (
+              <>
+                <TrendingUp className="h-5 w-5 text-green-500" />
+                <span className="text-xl font-bold text-green-500">
+                  +{opportunity.spreadPercent.toFixed(2)}%
+                </span>
+              </>
+            ) : (
+              <>
+                <TrendingDown className="h-5 w-5 text-red-500" />
+                <span className="text-xl font-bold text-red-500">
+                  {opportunity.spreadPercent.toFixed(2)}%
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Action message */}
+          <div className={`text-center mb-4 p-3 rounded-lg border ${
+            isProfitable 
+              ? 'bg-green-900/20 border-green-500/30' 
+              : 'bg-purple-900/20 border-purple-500/20'
+          }`}>
+            <p className={`text-lg font-semibold ${isProfitable ? 'text-green-400' : 'text-gray-400'}`}>
+              {opportunity.suggestedAction}
+            </p>
+          </div>
+
+          {/* Main button */}
+          <Button
+            className="w-full h-12 text-lg bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 disabled:opacity-50"
+            disabled={!isProfitable || isValidating}
+            onClick={handleClaim}
+          >
+            {isValidating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Updating...
+              </>
+            ) : isProfitable ? (
+              '💰 Claim Profit'
+            ) : (
+              '💤 Waiting for Signal'
+            )}
+          </Button>
+
+          {/* Details toggle */}
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => setShowDetails(!showDetails)}
+              className="text-xs text-gray-500 hover:text-purple-400 transition flex items-center justify-center gap-1 mx-auto"
+            >
+              <Info className="h-3 w-3" />
+              {showDetails ? 'Hide details' : 'Why this amount?'}
+            </button>
+
+            {showDetails && (
+              <div className="mt-3 text-xs text-left text-gray-400 space-y-1 p-3 bg-purple-900/10 rounded-lg border border-purple-500/10">
+                <p>📊 Net profit: <span className="text-green-400">${opportunity.netProfitUSD.toFixed(2)}</span> ({opportunity.netProfitPercent.toFixed(1)}%)</p>
+                <p>💸 Trading fees: ${opportunity.tradingFeesUSD.toFixed(2)}</p>
+                <p>🚚 Withdrawal fee: ${opportunity.withdrawalFeeUSD.toFixed(2)}</p>
+                <p>⛽ Gas fee: ${opportunity.gasFeeUSD.toFixed(4)}</p>
+                <p>{opportunity.liquidity.message}</p>
+                {opportunity.networkCompatibility.warning && (
+                  <p className="text-yellow-500">{opportunity.networkCompatibility.warning}</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <p className="text-center text-xs text-gray-600 mt-6">
+            Sleep. We hunt.
+          </p>
+        </CardContent>
+      </Card>
+    </>
   );
 });
 
