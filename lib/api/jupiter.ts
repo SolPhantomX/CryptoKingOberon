@@ -2,7 +2,7 @@
 
 import { PublicKey } from '@solana/web3.js';
 
-const JUPITER_QUOTE_API = 'https://quote-api.jup.ag/v6';
+const JUPITER_API_BASE = '/api/jupiter'; // Using our API route proxy
 const MAX_RETRIES = 2;
 
 export interface QuoteResponse {
@@ -10,7 +10,7 @@ export interface QuoteResponse {
   outputMint: string;
   inAmount: string;
   outAmount: string;
-  priceImpactPct?: number;  // ✅ Optional
+  priceImpactPct?: number;
   routePlan?: any[];
   otherRouteQuotes?: any[];
   slippageBps?: number;
@@ -24,7 +24,7 @@ export interface QuoteResponse {
 export interface JupiterQuoteParams {
   inputMint: string;
   outputMint: string;
-  amount: number;
+  amount: number; // in lamports
   slippageBps?: number;
 }
 
@@ -33,7 +33,8 @@ export async function fetchJupiterQuote(params: JupiterQuoteParams): Promise<Quo
   
   for (let attempt = 1; attempt <= MAX_RETRIES + 1; attempt++) {
     try {
-      const url = `${JUPITER_QUOTE_API}/quote?` + new URLSearchParams({
+      // Using our API route proxy instead of direct Jupiter API
+      const url = `${JUPITER_API_BASE}?` + new URLSearchParams({
         inputMint: params.inputMint,
         outputMint: params.outputMint,
         amount: params.amount.toString(),
@@ -44,7 +45,9 @@ export async function fetchJupiterQuote(params: JupiterQuoteParams): Promise<Quo
 
       const response = await fetch(url, {
         method: 'GET',
-        headers: { 'Accept': 'application/json' },
+        headers: {
+          'Accept': 'application/json',
+        },
       });
 
       if (!response.ok) {
