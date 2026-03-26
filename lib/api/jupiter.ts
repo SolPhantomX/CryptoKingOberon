@@ -10,7 +10,7 @@ export interface QuoteResponse {
   outputMint: string;
   inAmount: string;
   outAmount: string;
-  priceImpactPct?: number;
+  priceImpactPct?: number;  // ✅ Optional
   routePlan?: any[];
   otherRouteQuotes?: any[];
   slippageBps?: number;
