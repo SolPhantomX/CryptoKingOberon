@@ -27,7 +27,7 @@ export const ArbitrageCard = memo(() => {
   const handleClaim = useCallback(() => {
     if (!opportunity?.quote) return;
     console.log('Claim profit clicked', opportunity.quote);
-    alert('Профит забран! (тестовый режим)');
+    alert('Profit claimed! (test mode)');
   }, [opportunity?.quote]);
 
   const isProfitable = useMemo(() => 
