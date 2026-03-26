@@ -1,6 +1,6 @@
 // lib/core/liquidity-assessor.ts
 
-import { QuoteResponse } from '@jup-ag/api';
+import { QuoteResponse } from '../api/jupiter';  // ✅ Import from jupiter.ts!
 
 export interface LiquidityAssessment {
   level: 'excellent' | 'good' | 'medium' | 'low';
@@ -9,7 +9,8 @@ export interface LiquidityAssessment {
 }
 
 export function assessLiquidity(quote: QuoteResponse, userAmountUSD: number): LiquidityAssessment {
-  const slippagePercent = quote.slippageBps / 100;
+  // Handle optional slippageBps field with fallback
+  const slippagePercent = (quote.slippageBps ?? 50) / 100;
   
   if (slippagePercent < 0.3 && userAmountUSD < 5000) {
     return {
