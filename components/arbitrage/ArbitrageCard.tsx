@@ -1,23 +1,16 @@
 'use client';
 
-import { useState, useCallback, useMemo, memo, useRef } from 'react';
-import { Card, CardContent } from '../ui/card';
-import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
+import { useState, useCallback, useMemo, memo } from 'react';
+import { Card, CardContent } from '../../ui/card';
+import { Button } from '../../ui/button';
+import { Badge } from '../../ui/badge';
 import { TrendingUp, TrendingDown, Loader2, Info, RefreshCw } from 'lucide-react';
 import { useArbitrage } from '../../hooks/useArbitrage';
 
-const formatPrice = (price: number | null | undefined): string => {
-  if (price === null || price === undefined || isNaN(price)) {
-    return '—';
-  }
-  return `$${price.toFixed(2)}`;
-};
-
-const PriceColumn = memo(({ label, price }: { label: string; price: number | null | undefined }) => (
+const PriceColumn = memo(({ label, price }: { label: string; price: number }) => (
   <div className="text-center">
     <p className="text-sm text-gray-400">{label}</p>
-    <p className="text-2xl font-bold text-white">{formatPrice(price)}</p>
+    <p className="text-2xl font-bold text-white">${price.toFixed(2)}</p>
   </div>
 ));
 
@@ -26,33 +19,16 @@ PriceColumn.displayName = 'PriceColumn';
 export const ArbitrageCard = memo(() => {
   const { data: opportunity, isLoading, error, mutate, isValidating } = useArbitrage(1);
   const [showDetails, setShowDetails] = useState(false);
-  const [isClaiming, setIsClaiming] = useState(false);
-  const lastRefreshRef = useRef<number>(0);
 
   const handleRefresh = useCallback(() => {
-    const now = Date.now();
-    if (now - lastRefreshRef.current < 1000) {
-      return;
-    }
-    lastRefreshRef.current = now;
     mutate();
   }, [mutate]);
 
-  const handleClaim = useCallback(async () => {
-    if (!opportunity?.quote || isClaiming || !opportunity.buttonEnabled) return;
-    
-    setIsClaiming(true);
-    try {
-      console.log('Claim profit clicked', opportunity.quote);
-      // TODO: Add actual swap logic here
-      alert('Profit claimed! (test mode)');
-    } catch (err) {
-      console.error('Claim failed:', err);
-      alert('Failed to claim profit');
-    } finally {
-      setIsClaiming(false);
-    }
-  }, [opportunity?.quote, opportunity?.buttonEnabled, isClaiming]);
+  const handleClaim = useCallback(() => {
+    if (!opportunity?.quote) return;
+    console.log('Claim profit clicked', opportunity.quote);
+    alert('Профит забран! (тестовый режим)');
+  }, [opportunity?.quote]);
 
   const isProfitable = useMemo(() => 
     opportunity?.buttonEnabled ?? false, 
@@ -141,15 +117,10 @@ export const ArbitrageCard = memo(() => {
         {/* Main button */}
         <Button
           className="w-full h-12 text-lg bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 disabled:opacity-50"
-          disabled={!isProfitable || isValidating || isClaiming}
+          disabled={!isProfitable || isValidating}
           onClick={handleClaim}
         >
-          {isClaiming ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              Claiming...
-            </>
-          ) : isValidating ? (
+          {isValidating ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
               Updating...
@@ -186,16 +157,9 @@ export const ArbitrageCard = memo(() => {
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-6">
-          <button
-            onClick={handleRefresh}
-            disabled={isValidating}
-            className="text-xs text-gray-600 hover:text-purple-400 transition flex items-center justify-center gap-1 mx-auto disabled:opacity-50"
-          >
-            <RefreshCw className={`h-3 w-3 ${isValidating ? 'animate-spin' : ''}`} />
-            Sleep. We hunt.
-          </button>
-        </div>
+        <p className="text-center text-xs text-gray-600 mt-6">
+          Sleep. We hunt.
+        </p>
       </CardContent>
     </Card>
   );
