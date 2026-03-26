@@ -1,9 +1,40 @@
-import { QuoteResponse } from '@jup-ag/api';
+// lib/core/price-engine.ts
+
 import { fetchBinancePrice } from '../api/binance';
 import { fetchJupiterPrice } from '../api/jupiter';
 import { calculateNetProfit, NetProfitCalculation } from './fees';
 import { checkNetworkCompatibility, NetworkCompatibility } from './network-checker';
 import { assessLiquidity, LiquidityAssessment } from './liquidity-assessor';
+
+// ← ← ← Локальный интерфейс (вместо импорта из @jup-ag/api)
+export interface QuoteResponse {
+  inputMint: string;
+  outputMint: string;
+  inAmount: string;
+  outAmount: string;
+  priceImpactPct: number;
+  routePlan: Array<{
+    percent: number;
+    swapInfo: {
+      ammKey: string;
+      label: string;
+      inputMint: string;
+      outputMint: string;
+      feeAmount: string;
+      feeMint: string;
+    };
+  }>;
+  otherRouteQuotes: any[];
+  slippageBps: number;
+  platformFee: {
+    amount: string;
+    feeBps: number;
+  } | null;
+  timeTaken: number;
+  contextSlot: number;
+  otherAmountThreshold: string;
+  swapMode: 'ExactIn' | 'ExactOut';
+}
 
 export interface ArbitrageOpportunity extends NetProfitCalculation {
   pair: string;
