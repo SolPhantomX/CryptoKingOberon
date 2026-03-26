@@ -1,6 +1,6 @@
 // lib/api/binance.ts
 
-const BINANCE_API_BASE = '/api/binance'; // Using our API route proxy
+const BINANCE_API_BASE = '/api/binance';
 
 export async function fetchBinancePrice(symbol: string = 'SOLUSDT'): Promise<number> {
   try {
@@ -14,7 +14,6 @@ export async function fetchBinancePrice(symbol: string = 'SOLUSDT'): Promise<num
     return parseFloat(data.price);
   } catch (error) {
     console.error('Failed to fetch Binance price:', error);
-    // Fallback price
     return 87.60;
   }
 }
