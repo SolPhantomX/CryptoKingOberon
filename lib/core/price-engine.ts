@@ -1,11 +1,9 @@
-// lib/core/price-engine.ts
-
 import { QuoteResponse } from '@jup-ag/api';
-import { fetchBinancePrice } from '@/lib/api/binance';
-import { fetchJupiterPrice } from '@/lib/api/jupiter';
-import { calculateNetProfit, NetProfitCalculation } from '@/lib/core/fees';
-import { checkNetworkCompatibility, NetworkCompatibility } from '@/lib/core/network-checker';
-import { assessLiquidity, LiquidityAssessment } from '@/lib/core/liquidity-assessor';
+import { fetchBinancePrice } from '../api/binance';
+import { fetchJupiterPrice } from '../api/jupiter';
+import { calculateNetProfit, NetProfitCalculation } from './fees';
+import { checkNetworkCompatibility, NetworkCompatibility } from './network-checker';
+import { assessLiquidity, LiquidityAssessment } from './liquidity-assessor';
 
 export interface ArbitrageOpportunity extends NetProfitCalculation {
   pair: string;
