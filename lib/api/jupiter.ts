@@ -1,6 +1,7 @@
 // lib/api/jupiter.ts
 
 import { PublicKey } from '@solana/web3.js';
+import type { QuoteResponse } from '@jup-ag/api';
 
 const JUPITER_QUOTE_API = 'https://quote-api.jup.ag/v6';
 const MAX_RETRIES = 2;
@@ -10,20 +11,6 @@ export interface JupiterQuoteParams {
   outputMint: string;
   amount: number; // in lamports
   slippageBps?: number;
-}
-
-export interface QuoteResponse {
-  inputMint: string;
-  outputMint: string;
-  inAmount: string;
-  outAmount: string;
-  priceImpactPct: number;
-  routePlan: any[];
-  otherRouteQuotes: any[];
-  slippageBps: number;
-  platformFee: any;
-  timeTaken: number;
-  contextSlot: number;
 }
 
 export async function fetchJupiterQuote(params: JupiterQuoteParams): Promise<QuoteResponse> {
