@@ -1,24 +1,25 @@
 // lib/core/price-engine.ts
 
 import { fetchBinancePrice } from '../api/binance';
-import { fetchJupiterPrice, QuoteResponse } from '../api/jupiter';  // ✅ Import from jupiter
+import { fetchJupiterPrice, QuoteResponse } from '../api/jupiter';
 import { calculateNetProfit, NetProfitCalculation } from './fees';
 import { checkNetworkCompatibility, NetworkCompatibility } from './network-checker';
 import { assessLiquidity, LiquidityAssessment } from './liquidity-assessor';
-
-// No need to redefine QuoteResponse - import it from jupiter.ts!
+import { calculateProfitability, getProfitabilityMessage } from './profit-calculator';
 
 export interface ArbitrageOpportunity extends NetProfitCalculation {
   pair: string;
   binancePrice: number;
   jupiterPrice: number;
   spreadPercent: number;
+  spreadUSD: number;
   networkCompatibility: NetworkCompatibility;
   liquidity: LiquidityAssessment;
-  quote: QuoteResponse;  // ✅ Use imported type
+  quote: QuoteResponse;
   isProfitable: boolean;
   suggestedAction: string;
   buttonEnabled: boolean;
+  minProfitThresholdUSD: number; // For UI display
 }
 
 const TOKENS = {
@@ -26,41 +27,40 @@ const TOKENS = {
   USDC_OUTPUT: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
 } as const;
 
-const MIN_PROFIT_THRESHOLD_USD = 0.5;
-
 export async function getArbitrageOpportunity(
   amountSOL: number = 1
 ): Promise<ArbitrageOpportunity> {
+  
   const [binancePrice, { price: jupiterPrice, quote }] = await Promise.all([
     fetchBinancePrice('SOLUSDT'),
     fetchJupiterPrice(TOKENS.SOL_INPUT, TOKENS.USDC_OUTPUT, amountSOL),
   ]);
   
   const spreadPercent = ((binancePrice - jupiterPrice) / jupiterPrice) * 100;
+  const spreadUSD = Math.abs(binancePrice - jupiterPrice) * amountSOL;
+  
+  // 🔥 UNIVERSAL CALCULATION for any volume
+  const profitMetrics = await calculateProfitability(amountSOL);
   
   const profitDetails = calculateNetProfit(amountSOL, binancePrice, spreadPercent, 'SOL');
   const networkCompat = checkNetworkCompatibility('SOL', 'SOL');
   const liquidity = assessLiquidity(quote, amountSOL * binancePrice);
   
-  const isProfitable = profitDetails.netProfitUSD > MIN_PROFIT_THRESHOLD_USD 
+  // ✅ Decision based on real metrics
+  const isProfitable = profitMetrics.isProfitable(spreadUSD)
     && liquidity.level !== 'low' 
     && networkCompat.isCompatible;
   
+  // ✅ Smart message for UI
+  const profitMessage = await getProfitabilityMessage(amountSOL, spreadUSD);
   let suggestedAction = '';
-  let buttonEnabled = false;
   
   if (!networkCompat.isCompatible) {
     suggestedAction = networkCompat.warning!;
-    buttonEnabled = false;
   } else if (liquidity.level === 'low') {
     suggestedAction = liquidity.message;
-    buttonEnabled = false;
-  } else if (profitDetails.netProfitUSD < MIN_PROFIT_THRESHOLD_USD) {
-    suggestedAction = `💤 Profit less than $${MIN_PROFIT_THRESHOLD_USD} — wait for better spread (${profitDetails.netProfitPercent.toFixed(1)}%)`;
-    buttonEnabled = false;
   } else {
-    suggestedAction = `💰 You earn $${profitDetails.netProfitUSD.toFixed(2)} clean!`;
-    buttonEnabled = true;
+    suggestedAction = profitMessage.message;
   }
   
   return {
@@ -68,12 +68,14 @@ export async function getArbitrageOpportunity(
     binancePrice,
     jupiterPrice,
     spreadPercent,
+    spreadUSD,
     ...profitDetails,
     networkCompatibility: networkCompat,
     liquidity,
     quote,
     isProfitable,
     suggestedAction,
-    buttonEnabled,
+    buttonEnabled: isProfitable,
+    minProfitThresholdUSD: profitMetrics.minProfitableSpreadUSD,
   };
 }
