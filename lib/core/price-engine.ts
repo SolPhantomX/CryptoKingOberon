@@ -1,40 +1,12 @@
 // lib/core/price-engine.ts
 
 import { fetchBinancePrice } from '../api/binance';
-import { fetchJupiterPrice } from '../api/jupiter';
+import { fetchJupiterPrice, QuoteResponse } from '../api/jupiter';  // ✅ Import from jupiter
 import { calculateNetProfit, NetProfitCalculation } from './fees';
 import { checkNetworkCompatibility, NetworkCompatibility } from './network-checker';
 import { assessLiquidity, LiquidityAssessment } from './liquidity-assessor';
 
-// ← ← ← Локальный интерфейс (вместо импорта из @jup-ag/api)
-export interface QuoteResponse {
-  inputMint: string;
-  outputMint: string;
-  inAmount: string;
-  outAmount: string;
-  priceImpactPct: number;
-  routePlan: Array<{
-    percent: number;
-    swapInfo: {
-      ammKey: string;
-      label: string;
-      inputMint: string;
-      outputMint: string;
-      feeAmount: string;
-      feeMint: string;
-    };
-  }>;
-  otherRouteQuotes: any[];
-  slippageBps: number;
-  platformFee: {
-    amount: string;
-    feeBps: number;
-  } | null;
-  timeTaken: number;
-  contextSlot: number;
-  otherAmountThreshold: string;
-  swapMode: 'ExactIn' | 'ExactOut';
-}
+// No need to redefine QuoteResponse - import it from jupiter.ts!
 
 export interface ArbitrageOpportunity extends NetProfitCalculation {
   pair: string;
@@ -43,7 +15,7 @@ export interface ArbitrageOpportunity extends NetProfitCalculation {
   spreadPercent: number;
   networkCompatibility: NetworkCompatibility;
   liquidity: LiquidityAssessment;
-  quote: QuoteResponse;
+  quote: QuoteResponse;  // ✅ Use imported type
   isProfitable: boolean;
   suggestedAction: string;
   buttonEnabled: boolean;
@@ -59,7 +31,6 @@ const MIN_PROFIT_THRESHOLD_USD = 0.5;
 export async function getArbitrageOpportunity(
   amountSOL: number = 1
 ): Promise<ArbitrageOpportunity> {
-  // Fetch prices in parallel
   const [binancePrice, { price: jupiterPrice, quote }] = await Promise.all([
     fetchBinancePrice('SOLUSDT'),
     fetchJupiterPrice(TOKENS.SOL_INPUT, TOKENS.USDC_OUTPUT, amountSOL),
@@ -67,16 +38,10 @@ export async function getArbitrageOpportunity(
   
   const spreadPercent = ((binancePrice - jupiterPrice) / jupiterPrice) * 100;
   
-  // Calculate net profit
   const profitDetails = calculateNetProfit(amountSOL, binancePrice, spreadPercent, 'SOL');
-  
-  // Check network compatibility
   const networkCompat = checkNetworkCompatibility('SOL', 'SOL');
-  
-  // Assess liquidity
   const liquidity = assessLiquidity(quote, amountSOL * binancePrice);
   
-  // Determine if button should be enabled
   const isProfitable = profitDetails.netProfitUSD > MIN_PROFIT_THRESHOLD_USD 
     && liquidity.level !== 'low' 
     && networkCompat.isCompatible;
