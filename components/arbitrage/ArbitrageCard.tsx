@@ -20,7 +20,7 @@ const PriceColumn = memo(({ label, price }: { label: string; price: number }) =>
 PriceColumn.displayName = 'PriceColumn';
 
 export const ArbitrageCard = memo(() => {
-  const {  opportunity, isLoading, error, mutate, isValidating } = useArbitrage(1);
+  const { data: opportunity, isLoading, error, mutate, isValidating } = useArbitrage(1);
   const [showDetails, setShowDetails] = useState(false);
   const [shouldPlaySound, setShouldPlaySound] = useState(false);
   const [prevProfitable, setPrevProfitable] = useState(false);
