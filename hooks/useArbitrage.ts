@@ -6,7 +6,7 @@ const fetcher = async (amount: number): Promise<ArbitrageOpportunity> => {
 };
 
 export function useArbitrage(amountSOL: number = 1) {
-  const { data, error, isLoading, mutate } = useSWR(
+  const { data, error, isLoading, mutate, isValidating } = useSWR(
     ['arbitrage', amountSOL],
     () => fetcher(amountSOL),
     {
@@ -24,5 +24,6 @@ export function useArbitrage(amountSOL: number = 1) {
     error,
     isLoading,
     mutate,
+    isValidating,  // ← Added this line
   };
 }
