@@ -75,21 +75,19 @@ function setCachedPrice(symbol: string, price: number): void {
   priceCache.set(symbol, { price, timestamp: Date.now() });
 
   if (!cacheCleanupInterval) {
-    cacheCleanupInterval = setInterval(() => clearExpiredCache(), 60000);
-  }
-}
+    cacheCleanupInterval = setInterval(() => {
+      const now = Date.now();
+      for (const [sym, { timestamp }] of priceCache.entries()) {
+        if (now - timestamp > CACHE_TTL_MS) {
+          priceCache.delete(sym);
+        }
+      }
 
-function clearExpiredCache(): void {
-  const now = Date.now();
-  for (const [symbol, { timestamp }] of priceCache.entries()) {
-    if (now - timestamp > CACHE_TTL_MS) {
-      priceCache.delete(symbol);
-    }
-  }
-
-  if (priceCache.size === 0 && cacheCleanupInterval) {
-    clearInterval(cacheCleanupInterval);
-    cacheCleanupInterval = null;
+      if (priceCache.size === 0 && cacheCleanupInterval) {
+        clearInterval(cacheCleanupInterval);
+        cacheCleanupInterval = null;
+      }
+    }, 60000);
   }
 }
 
@@ -155,10 +153,6 @@ export async function getBinancePriceWithRetry(
   delayMs: number = 1000,
   useCache: boolean = true
 ): Promise<number> {
-  if (!symbol || typeof symbol !== 'string') {
-    throw new Error('Symbol must be a non-empty string');
-  }
-  
   let lastError: Error | null = null;
   const normalizedSymbol = symbol.toUpperCase().trim();
 
@@ -168,16 +162,6 @@ export async function getBinancePriceWithRetry(
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       
-      // Don't retry on client errors (4xx)
-      if (error instanceof Error && error.message.includes('400') || error.message.includes('404')) {
-        throw lastError;
-      }
-      
-      // Don't retry on validation errors
-      if (lastError.message.includes('Invalid')) {
-        throw lastError;
-      }
-
       if (i < retries - 1) {
         const backoff = delayMs * Math.pow(2, i) + Math.random() * 100;
         await new Promise(resolve => setTimeout(resolve, backoff));
@@ -188,62 +172,15 @@ export async function getBinancePriceWithRetry(
   throw lastError || new Error(`Failed to fetch ${normalizedSymbol} price after ${retries} retries`);
 }
 
-export async function getMultipleBinancePrices(
-  symbols: string[],
-  concurrency: number = 5
-): Promise<Map<string, number>> {
-  if (!Array.isArray(symbols) || symbols.length === 0) {
-    return new Map();
-  }
-  
-  const results = new Map<string, number>();
-  const uniqueSymbols = [...new Set(symbols.filter(s => s && typeof s === 'string').map(s => s.toUpperCase().trim()))];
-  
-  for (let i = 0; i < uniqueSymbols.length; i += concurrency) {
-    const batch = uniqueSymbols.slice(i, i + concurrency);
-    
-    const batchResults = await Promise.allSettled(
-      batch.map(async (symbol) => {
-        const price = await getBinancePriceWithRetry(symbol, 2, 500, true);
-        return { symbol, price };
-      })
-    );
-
-    for (const result of batchResults) {
-      if (result.status === 'fulfilled') {
-        results.set(result.value.symbol, result.value.price);
-      } else {
-        console.error('Failed to fetch price:', result.reason);
-      }
-    }
-    
-    if (i + concurrency < uniqueSymbols.length) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-  }
-
-  return results;
-}
-
 export async function getSolPriceWithFallback(
   fallbackPrice: number = 89.00,
   useCache: boolean = true
 ): Promise<number> {
-  if (typeof fallbackPrice !== 'number' || isNaN(fallbackPrice) || fallbackPrice <= 0) {
-    throw new Error('Fallback price must be a positive number');
-  }
-  
   try {
     return await getSolPrice(useCache);
   } catch {
-    console.warn('Using fallback SOL price:', fallbackPrice);
     return fallbackPrice;
   }
-}
-
-export function invalidatePriceCache(symbol: string): void {
-  if (!symbol || typeof symbol !== 'string') return;
-  priceCache.delete(symbol.toUpperCase().trim());
 }
 
 export function clearPriceCache(): void {
@@ -252,15 +189,4 @@ export function clearPriceCache(): void {
     clearInterval(cacheCleanupInterval);
     cacheCleanupInterval = null;
   }
-}
-
-export function getCacheStats(): { size: number; keys: string[] } {
-  return {
-    size: priceCache.size,
-    keys: Array.from(priceCache.keys()),
-  };
-}
-
-export function cleanup(): void {
-  clearPriceCache();
 }
