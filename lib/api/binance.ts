@@ -22,6 +22,7 @@ const FETCH_TIMEOUT_MS = 10000;
 // Cache for prices to reduce API calls
 const priceCache = new Map<string, { price: number; timestamp: number }>();
 const CACHE_TTL_MS = 30000; // 30 seconds cache
+let cacheCleanupInterval: NodeJS.Timeout | null = null;
 
 /**
  * Helper to create a fetch with timeout and AbortController cleanup
@@ -86,6 +87,11 @@ function getCachedPrice(symbol: string): number | null {
  */
 function setCachedPrice(symbol: string, price: number): void {
   priceCache.set(symbol, { price, timestamp: Date.now() });
+  
+  // Start cache cleanup interval if not already running
+  if (!cacheCleanupInterval) {
+    cacheCleanupInterval = setInterval(clearExpiredCache, 60000);
+  }
 }
 
 /**
@@ -98,10 +104,13 @@ function clearExpiredCache(): void {
       priceCache.delete(symbol);
     }
   }
+  
+  // Clear interval if cache is empty
+  if (priceCache.size === 0 && cacheCleanupInterval) {
+    clearInterval(cacheCleanupInterval);
+    cacheCleanupInterval = null;
+  }
 }
-
-// Run cache cleanup every minute
-setInterval(clearExpiredCache, 60000);
 
 /**
  * Fetch price for any symbol from Binance with caching
@@ -111,7 +120,11 @@ setInterval(clearExpiredCache, 60000);
  * @throws Error if request fails or price is invalid
  */
 export async function getBinancePrice(symbol: string, useCache: boolean = true): Promise<number> {
-  const normalizedSymbol = symbol.toUpperCase();
+  if (!symbol || typeof symbol !== 'string') {
+    throw new Error('Symbol must be a non-empty string');
+  }
+  
+  const normalizedSymbol = symbol.toUpperCase().trim();
   
   // Check cache first
   if (useCache) {
@@ -122,8 +135,10 @@ export async function getBinancePrice(symbol: string, useCache: boolean = true):
   }
 
   try {
+    const url = `/api/binance?symbol=${encodeURIComponent(normalizedSymbol)}`;
+    
     const response = await fetchWithTimeout(
-      `/api/binance?symbol=${encodeURIComponent(normalizedSymbol)}`,
+      url,
       {
         headers: {
           Accept: 'application/json',
@@ -143,10 +158,8 @@ export async function getBinancePrice(symbol: string, useCache: boolean = true):
         // Ignore JSON parsing error
       }
       
-      // Don't throw for 404, it's a client error
       const error = new Error(errorMessage);
-      (error as any).statusCode = response.status;
-      (error as any).errorCode = errorCode;
+      Object.assign(error, { statusCode: response.status, errorCode });
       throw error;
     }
 
@@ -171,7 +184,7 @@ export async function getBinancePrice(symbol: string, useCache: boolean = true):
       symbol: normalizedSymbol,
       error: errorMessage,
     });
-    throw new Error(`Failed to fetch ${normalizedSymbol} price: ${errorMessage}`);
+    throw error;
   }
 }
 
@@ -199,11 +212,16 @@ export async function getBinancePriceWithRetry(
   delayMs: number = 1000,
   useCache: boolean = true
 ): Promise<number> {
+  if (!symbol || typeof symbol !== 'string') {
+    throw new Error('Symbol must be a non-empty string');
+  }
+  
   let lastError: Error | null = null;
+  const normalizedSymbol = symbol.toUpperCase();
 
   for (let i = 0; i < retries; i++) {
     try {
-      return await getBinancePrice(symbol, useCache);
+      return await getBinancePrice(normalizedSymbol, useCache);
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       
@@ -213,13 +231,14 @@ export async function getBinancePriceWithRetry(
         throw lastError;
       }
       
-      // Don't retry on validation errors
+      // Don't retry on validation errors or missing symbol errors
       if (lastError.message.includes('Invalid response') || 
-          lastError.message.includes('Invalid price')) {
+          lastError.message.includes('Invalid price') ||
+          lastError.message.includes('non-empty string')) {
         throw lastError;
       }
 
-      console.warn(`Retry ${i + 1}/${retries} for ${symbol}: ${lastError.message}`);
+      console.warn(`Retry ${i + 1}/${retries} for ${normalizedSymbol}: ${lastError.message}`);
 
       if (i < retries - 1) {
         // Exponential backoff with jitter: 1s, 2s, 4s + random jitter
@@ -230,7 +249,7 @@ export async function getBinancePriceWithRetry(
     }
   }
 
-  throw lastError || new Error(`Failed to fetch ${symbol} price after ${retries} retries`);
+  throw lastError || new Error(`Failed to fetch ${normalizedSymbol} price after ${retries} retries`);
 }
 
 /**
@@ -243,8 +262,12 @@ export async function getMultipleBinancePrices(
   symbols: string[],
   concurrency: number = 5
 ): Promise<Map<string, number>> {
+  if (!Array.isArray(symbols) || symbols.length === 0) {
+    return new Map();
+  }
+  
   const results = new Map<string, number>();
-  const uniqueSymbols = [...new Set(symbols.map(s => s.toUpperCase()))];
+  const uniqueSymbols = [...new Set(symbols.filter(s => s && typeof s === 'string').map(s => s.toUpperCase().trim()))];
   
   // Process in batches to avoid overwhelming the API
   for (let i = 0; i < uniqueSymbols.length; i += concurrency) {
@@ -285,6 +308,10 @@ export async function getSolPriceWithFallback(
   fallbackPrice: number = 89.00,
   useCache: boolean = true
 ): Promise<number> {
+  if (typeof fallbackPrice !== 'number' || isNaN(fallbackPrice) || fallbackPrice <= 0) {
+    throw new Error('Fallback price must be a positive number');
+  }
+  
   try {
     return await getSolPrice(useCache);
   } catch (error) {
@@ -297,7 +324,10 @@ export async function getSolPriceWithFallback(
  * Invalidate cache for a specific symbol
  */
 export function invalidatePriceCache(symbol: string): void {
-  priceCache.delete(symbol.toUpperCase());
+  if (!symbol || typeof symbol !== 'string') {
+    return;
+  }
+  priceCache.delete(symbol.toUpperCase().trim());
 }
 
 /**
@@ -305,6 +335,10 @@ export function invalidatePriceCache(symbol: string): void {
  */
 export function clearPriceCache(): void {
   priceCache.clear();
+  if (cacheCleanupInterval) {
+    clearInterval(cacheCleanupInterval);
+    cacheCleanupInterval = null;
+  }
 }
 
 /**
@@ -315,4 +349,15 @@ export function getCacheStats(): { size: number; keys: string[] } {
     size: priceCache.size,
     keys: Array.from(priceCache.keys()),
   };
+}
+
+/**
+ * Cleanup function for testing or app shutdown
+ */
+export function cleanup(): void {
+  if (cacheCleanupInterval) {
+    clearInterval(cacheCleanupInterval);
+    cacheCleanupInterval = null;
+  }
+  priceCache.clear();
 }
