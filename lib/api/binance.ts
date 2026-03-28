@@ -18,7 +18,7 @@ const CACHE_TTL_MS = 30000;
 const priceCache = new Map<string, { price: number; timestamp: number }>();
 let cacheCleanupInterval: number | null = null;
 
-// ====================== CACHE HELPERS ======================
+// ==================== CACHE HELPERS (должны быть сверху) ====================
 function getCachedPrice(symbol: string): number | null {
   const cached = priceCache.get(symbol);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
@@ -30,8 +30,8 @@ function getCachedPrice(symbol: string): number | null {
 function setCachedPrice(symbol: string, price: number): void {
   priceCache.set(symbol, { price, timestamp: Date.now() });
 
-  if (!cacheCleanupInterval) {
-    cacheCleanupInterval = setInterval(clearExpiredCache, 60000) as number;
+  if (cacheCleanupInterval === null) {
+    cacheCleanupInterval = setInterval(clearExpiredCache, 60000);
   }
 }
 
@@ -49,7 +49,7 @@ function clearExpiredCache(): void {
   }
 }
 
-// ====================== FETCH HELPERS ======================
+// ==================== FETCH HELPERS ====================
 async function fetchWithTimeout(
   url: string,
   options: RequestInit = {},
@@ -91,7 +91,7 @@ function validateBinanceResponse(data: unknown): asserts data is { symbol: strin
   }
 }
 
-// ====================== MAIN FUNCTIONS ======================
+// ==================== PUBLIC FUNCTIONS ====================
 export async function getBinancePrice(symbol: string, useCache: boolean = true): Promise<number> {
   if (!symbol || typeof symbol !== 'string' || symbol.trim() === '') {
     throw new Error('Symbol must be a non-empty string');
