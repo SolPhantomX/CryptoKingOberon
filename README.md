@@ -1,80 +1,98 @@
-# Oberon - SleepTrader 👑
+# Oberon — SleepTrader 👑
 
-**The King of Spreads. Sleep. We hunt.**
+**Become the King of Tokens while others sleep.**
 
-Earn while you sleep. One button. Real profit.
+Oberon is the powerful King of Fairies and Elves from William Shakespeare’s play “A Midsummer Night’s Dream”.  
+Mighty and cunning, he is always one step ahead.  
+While you sleep or rest, he hunts the best opportunities on the market. At night, when the whole world sleeps, he rules the realm of dreams, illusions, and… **profitable spreads**.
 
-### For whom? ❤️
+Now **you are Oberon**.  
+One button. Real profit. While you relax.
 
-For regular people.
+---
 
-You have some SOL in your wallet.  
-You’re not a degen with 10 monitors.  
-You don’t want to learn complicated terms like slippage, MEV or order book.
+### How to Start in 30 Seconds ⚡
 
-You just want to **press one button** sometimes and make money.
+1. **Connect Phantom** — click “Connect Wallet” (just once)  
+2. **Open the app** — you’ll see the main screen with current opportunity  
+3. **Wait for the green signal** — when it shows “Clean Profit $X.XX”  
+4. **Press the big button 💰 Claim Profit**  
+5. **Confirm in Phantom** — and receive USDC to your wallet  
 
-**Oberon - SleepTrader** is the first crypto tool built for the other 90%.
+Done. No complicated settings. No charts. Just profit.
 
-### Who is Oberon? ✨
+---
 
-Oberon is the powerful **King of the Fairies and Elves** from Shakespeare’s “A Midsummer Night’s Dream”.
+### Why Oberon Will Explode Your Wallet? 🔥
 
-He rules the world of dreams and illusions — strategic, mysterious, and always one step ahead.
+- Truly one-click — no charts, order books or complicated settings  
+- Works with small amounts — you can start earning from as little as 0.5 SOL  
+- Precise net profit calculation after all fees (Jupiter slippage, priority fee, MEV buffer)  
+- Button lights up **only** when the trade is truly profitable  
+- Beautiful push notifications + pleasant sound alert  
+- Fully on-chain — you always control your funds
 
-While you rest or sleep, Oberon quietly works in the background, hunts the best arbitrage opportunities between Binance and Jupiter, and brings you clean profit at the perfect moment.
+### Who is Oberon Made For? ❤️
 
-### How it works (stupidly simple) 😌
+For regular people who have at least some SOL in their wallet.
 
-1. Open the app  
-2. Connect your Phantom wallet (just once)  
-3. Look at the big green arrow  
-4. If it says **“You can make $2.34 clean”** — press **one big button “💰 Claim Profit”**  
-5. Confirm in your wallet  
-6. Money is yours
+You don’t sit in front of monitors all day.  
+You don’t want to become a professional trader.  
+You just want to occasionally press one button and watch money appear in your wallet.
 
-No charts. No tables. No stress.
+Oberon does all the smart work for you.
 
-### What’s under the hood (The Royal Engine) ⚙️
+### How It Works (Very Simple) 😌
 
-While you see only one button, Oberon runs a sophisticated real-time system:
+1. Connect Phantom once  
+2. Open the app  
+3. Look at the main screen  
+4. If you see a green arrow + Clean Profit $X.XX — press the big button 💰 Claim Profit  
+5. Confirm in Phantom  
+6. Receive USDC to your wallet  
 
-- Real-time price engine comparing Binance spot with the best Jupiter routing across all liquidity pools
-- Precise net profit calculation (Binance 0.1% trading fees, withdrawal fees, Solana priority fee, Jupiter slippage + MEV buffer)
-- Smart liquidity & slippage protection using live Jupiter quote data
-- Network withdrawal compatibility check
-- Intelligent opportunity filter — button activates only when net profit > $1.50 after all costs
-- Rate-limit resilient architecture with smart caching and retry logic
-- “Set & Forget” mode with pleasant sound alerts + browser push notifications
+That’s it. No magic. Just profit.
 
-Bad or risky deals? The button stays gray. Oberon protects his subjects.
+### Killer Features No One Else Has 👑
 
-### Killer Feature 🔥
+- Smart profit calculation — shows only truly profitable deals  
+- Protection from bad trades — button stays inactive if the risk is too high  
+- Memecoin support — catch fat spreads on BONK, WIF, POPCAT and others  
+- PWA + push notifications — works even with the tab closed  
+- Pleasant sound alert — Oberon personally wakes you when money is in the air  
+- Works from 0.5–1 SOL — perfect for regular users  
+- Maximum security — everything is signed only in your wallet
 
-When a juicy opportunity appears, Oberon gently wakes you up with a nice sound + push notification:
+### Comparison with Competitors
 
-> 👑 Oberon speaks:  
-> 🟢 SOL/USDT — Clean profit ≈ $3.20  
-> Tap to claim your tribute
+| What Matters           | Other Bots        | Oberon                  |
+|------------------------|-------------------|-------------------------|
+| Simplicity             | Complicated       | One big button          |
+| Small amounts          | Almost useless    | Works great             |
+| Profit accuracy        | Approximate       | Real net profit         |
+| Loss protection        | Weak              | Very strong             |
+| Notifications          | Basic             | Beautiful + sound       |
+| Made for regular people| No                | Built specifically      |
 
-You can close the tab or install as PWA — the King will find you.
+### Monetization (Honest & Royal) 💰
 
-### Monetization (Honest 💰)
-
-- **Free version** — fully working  
-- **Premium** ($9–12/month) — more pairs, priority alerts, full history & royal privileges
+- **Free version** — fully working and already profitable  
+- **Premium** ($9–12 per month) — more pairs, priority alerts, trade history and royal privileges
 
 ### Tech Stack 🛠️
 
 - Next.js 15 (App Router)
-- Tailwind CSS + shadcn/ui
-- Solana Wallet Adapter + Jupiter v6 API
-- Binance Public API
-- PWA + Web Push Notifications + Sound Alerts
+- TypeScript + Tailwind + shadcn/ui
+- Solana Wallet Adapter + Jupiter v6
+- PWA + Web Push + Sound Alerts
 
-### Philosophy 👑
+---
 
-**One button on the surface.**  
-**Powerful, careful, and user-protecting engine under the hood.**
+**Oberon is not just a tool.**
 
- We will never sacrifice simplicity for features.
+It’s your personal night king who quietly makes you richer while you live your life.
+
+**Ready to become the King of Tokens?**
+
+Connect Phantom and press the first button.  
+Let the hunt begin. 👑
