@@ -1,3 +1,5 @@
+// lib/api/binance.ts
+
 /**
  * Client for fetching price data from Binance via Next.js API proxy
  */
@@ -10,18 +12,44 @@ export interface BinancePriceResponse {
   source: string;
 }
 
-export interface BinanceErrorResponse {
-  error: string;
-  code?: string;
-  timestamp: number;
-}
-
 const FETCH_TIMEOUT_MS = 10000;
 const CACHE_TTL_MS = 30000;
 
 const priceCache = new Map<string, { price: number; timestamp: number }>();
-let cacheCleanupInterval: ReturnType<typeof setInterval> | null = null;
+let cacheCleanupInterval: number | null = null;
 
+// ====================== CACHE HELPERS ======================
+function getCachedPrice(symbol: string): number | null {
+  const cached = priceCache.get(symbol);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.price;
+  }
+  return null;
+}
+
+function setCachedPrice(symbol: string, price: number): void {
+  priceCache.set(symbol, { price, timestamp: Date.now() });
+
+  if (!cacheCleanupInterval) {
+    cacheCleanupInterval = setInterval(clearExpiredCache, 60000) as number;
+  }
+}
+
+function clearExpiredCache(): void {
+  const now = Date.now();
+  for (const [symbol, { timestamp }] of priceCache.entries()) {
+    if (now - timestamp > CACHE_TTL_MS) {
+      priceCache.delete(symbol);
+    }
+  }
+
+  if (priceCache.size === 0 && cacheCleanupInterval !== null) {
+    clearInterval(cacheCleanupInterval);
+    cacheCleanupInterval = null;
+  }
+}
+
+// ====================== FETCH HELPERS ======================
 async function fetchWithTimeout(
   url: string,
   options: RequestInit = {},
@@ -63,35 +91,9 @@ function validateBinanceResponse(data: unknown): asserts data is { symbol: strin
   }
 }
 
-function getCachedPrice(symbol: string): number | null {
-  const cached = priceCache.get(symbol);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-    return cached.price;
-  }
-  return null;
-}
-
-function setCachedPrice(symbol: string, price: number): void {
-  priceCache.set(symbol, { price, timestamp: Date.now() });
-
-  if (!cacheCleanupInterval) {
-    cacheCleanupInterval = setInterval(() => {
-      const now = Date.now();
-      for (const [sym, { timestamp }] of priceCache.entries()) {
-        if (now - timestamp > CACHE_TTL_MS) {
-          priceCache.delete(sym);
-        }
-      }
-      if (priceCache.size === 0 && cacheCleanupInterval) {
-        clearInterval(cacheCleanupInterval);
-        cacheCleanupInterval = null;
-      }
-    }, 60000);
-  }
-}
-
+// ====================== MAIN FUNCTIONS ======================
 export async function getBinancePrice(symbol: string, useCache: boolean = true): Promise<number> {
-  if (!symbol || typeof symbol !== 'string') {
+  if (!symbol || typeof symbol !== 'string' || symbol.trim() === '') {
     throw new Error('Symbol must be a non-empty string');
   }
 
@@ -99,17 +101,13 @@ export async function getBinancePrice(symbol: string, useCache: boolean = true):
 
   if (useCache) {
     const cachedPrice = getCachedPrice(normalizedSymbol);
-    if (cachedPrice !== null) {
-      return cachedPrice;
-    }
+    if (cachedPrice !== null) return cachedPrice;
   }
 
   try {
     const response = await fetchWithTimeout(
       `/api/binance?symbol=${encodeURIComponent(normalizedSymbol)}`,
-      {
-        headers: { Accept: 'application/json' },
-      }
+      { headers: { Accept: 'application/json' } }
     );
 
     if (!response.ok) {
@@ -117,9 +115,7 @@ export async function getBinancePrice(symbol: string, useCache: boolean = true):
       try {
         const errorData = await response.json();
         errorMessage = errorData.error || errorData.message || errorMessage;
-      } catch {
-        // Ignore JSON parsing error
-      }
+      } catch {}
       throw new Error(errorMessage);
     }
 
@@ -160,9 +156,10 @@ export async function getBinancePriceWithRetry(
       return await getBinancePrice(normalizedSymbol, useCache);
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
+
       if (i < retries - 1) {
         const backoff = delayMs * Math.pow(2, i) + Math.random() * 100;
-        await new Promise((resolve) => setTimeout(resolve, backoff));
+        await new Promise(resolve => setTimeout(resolve, backoff));
       }
     }
   }
@@ -170,21 +167,14 @@ export async function getBinancePriceWithRetry(
   throw lastError || new Error(`Failed to fetch ${normalizedSymbol} price after ${retries} retries`);
 }
 
-export async function getSolPriceWithFallback(
-  fallbackPrice: number = 89.00,
-  useCache: boolean = true
-): Promise<number> {
-  try {
-    return await getSolPrice(useCache);
-  } catch {
-    return fallbackPrice;
-  }
-}
-
 export function clearPriceCache(): void {
   priceCache.clear();
-  if (cacheCleanupInterval) {
+  if (cacheCleanupInterval !== null) {
     clearInterval(cacheCleanupInterval);
     cacheCleanupInterval = null;
   }
+}
+
+export function cleanup(): void {
+  clearPriceCache();
 }
