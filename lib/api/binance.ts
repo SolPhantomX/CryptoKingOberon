@@ -71,27 +71,22 @@ function getCachedPrice(symbol: string): number | null {
   return null;
 }
 
-// ✅ Функция объявлена ДО использования
-function clearExpiredCache(): void {
-  const now = Date.now();
-  for (const [symbol, { timestamp }] of priceCache.entries()) {
-    if (now - timestamp > CACHE_TTL_MS) {
-      priceCache.delete(symbol);
-    }
-  }
-
-  if (priceCache.size === 0 && cacheCleanupInterval) {
-    clearInterval(cacheCleanupInterval);
-    cacheCleanupInterval = null;
-  }
-}
-
 function setCachedPrice(symbol: string, price: number): void {
   priceCache.set(symbol, { price, timestamp: Date.now() });
 
   if (!cacheCleanupInterval) {
-    // ✅ clearExpiredCache уже объявлена
-    cacheCleanupInterval = setInterval(clearExpiredCache, 60000);
+    cacheCleanupInterval = setInterval(() => {
+      const now = Date.now();
+      for (const [sym, { timestamp }] of priceCache.entries()) {
+        if (now - timestamp > CACHE_TTL_MS) {
+          priceCache.delete(sym);
+        }
+      }
+      if (priceCache.size === 0 && cacheCleanupInterval) {
+        clearInterval(cacheCleanupInterval);
+        cacheCleanupInterval = null;
+      }
+    }, 60000);
   }
 }
 
@@ -165,10 +160,9 @@ export async function getBinancePriceWithRetry(
       return await getBinancePrice(normalizedSymbol, useCache);
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-
       if (i < retries - 1) {
         const backoff = delayMs * Math.pow(2, i) + Math.random() * 100;
-        await new Promise(resolve => setTimeout(resolve, backoff));
+        await new Promise((resolve) => setTimeout(resolve, backoff));
       }
     }
   }
