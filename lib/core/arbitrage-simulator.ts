@@ -2,7 +2,6 @@ import {
   ArbitrageOpportunity, 
   SwapQuote,
   JupiterQuoteParams,
-  FeeBreakdown,
 } from '@/types/arbitrage';
 import { getJupiterQuote } from '@/lib/api/jupiter';
 import { 
@@ -26,6 +25,14 @@ interface SimulatorParams {
   solPriceUSD: number;
   userRpcUrl?: string;
   poolLiquidityUSD?: number;
+}
+
+interface FeeBreakdown {
+  dexFeeUSD: number;
+  slippageUSD: number;
+  priceImpactUSD: number;
+  networkFeeUSD: number;
+  totalUSD: number;
 }
 
 interface SimulationResult {
@@ -68,10 +75,8 @@ function calculateFees(
   const otherAmountThresholdNum = parseFloat(quote.otherAmountThreshold);
   
   let slippageUSD = 0;
-  let slippagePercent = 0;
-  
   if (outAmountNum > 0 && otherAmountThresholdNum > 0) {
-    slippagePercent = (outAmountNum - otherAmountThresholdNum) / outAmountNum;
+    const slippagePercent = (outAmountNum - otherAmountThresholdNum) / outAmountNum;
     slippageUSD = tradeValueUSD * Math.max(0, Math.min(slippagePercent, 0.1));
   }
   
@@ -88,8 +93,7 @@ function calculateFees(
     priceImpactUSD,
     networkFeeUSD,
     totalUSD,
-    slippagePercent,
-  } as FeeBreakdown & { slippagePercent: number };
+  };
 }
 
 export async function simulateArbitrage(
@@ -143,8 +147,8 @@ export async function simulateArbitrage(
     const netProfitUSD = grossProfitUSD - fees.totalUSD;
     const netProfitPercent = tradeValueUSD > 0 ? (netProfitUSD / tradeValueUSD) * 100 : 0;
     
-    const minRequiredProfitUSD = getMinProfitThreshold(tokenSymbol, tradeValueUSD, fees.slippagePercent);
-    const profitable = isProfitable(tokenSymbol, tradeValueUSD, netProfitUSD, fees.slippagePercent);
+    const minRequiredProfitUSD = getMinProfitThreshold(tokenSymbol, tradeValueUSD);
+    const profitable = isProfitable(tokenSymbol, tradeValueUSD, netProfitUSD);
     
     const opportunity: ArbitrageOpportunity = {
       tokenSymbol: tokenConfig.symbol,
@@ -154,26 +158,8 @@ export async function simulateArbitrage(
       grossProfitUSD,
       netProfitUSD,
       netProfitPercent,
-      fees: {
-        dexFeeUSD: fees.dexFeeUSD,
-        slippageUSD: fees.slippageUSD,
-        priceImpactUSD: fees.priceImpactUSD,
-        networkFeeUSD: fees.networkFeeUSD,
-        totalUSD: fees.totalUSD,
-      },
-      quote: {
-        inputMint: quote.inputMint,
-        outputMint: quote.outputMint,
-        inAmount: quote.inAmount,
-        outAmount: quote.outAmount,
-        otherAmountThreshold: quote.otherAmountThreshold,
-        swapMode: quote.swapMode,
-        slippageBps: quote.slippageBps,
-        priceImpactPct: quote.priceImpactPct,
-        routePlan: quote.routePlan,
-        timeTaken: quote.timeTaken,
-        contextSlot: quote.contextSlot,
-      },
+      fees,
+      quote,
       isProfitable: profitable,
       minRequiredProfitUSD,
       timestamp: Date.now(),
