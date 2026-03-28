@@ -19,10 +19,13 @@ export interface BinanceErrorResponse {
 
 // Timeout for fetch requests (10 seconds for better reliability)
 const FETCH_TIMEOUT_MS = 10000;
+
 // Cache for prices to reduce API calls
 const priceCache = new Map<string, { price: number; timestamp: number }>();
 const CACHE_TTL_MS = 30000; // 30 seconds cache
-let cacheCleanupInterval: NodeJS.Timeout | null = null;
+
+// Используем ReturnType<typeof setTimeout> вместо NodeJS.Timeout для кросс-платформенности
+let cacheCleanupInterval: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * Helper to create a fetch with timeout and AbortController cleanup
