@@ -1,6 +1,5 @@
 /**
- * Client for fetching price data from Binance
- * Calls the Next.js API route that proxies to Binance
+ * Client for fetching price data from Binance via Next.js API proxy
  */
 
 export interface BinancePriceResponse {
@@ -13,16 +12,15 @@ export interface BinancePriceResponse {
 
 export interface BinanceErrorResponse {
   error: string;
-  code: string;
+  code?: string;
   timestamp: number;
 }
 
 const FETCH_TIMEOUT_MS = 10000;
-const priceCache = new Map<string, { price: number; timestamp: number }>();
 const CACHE_TTL_MS = 30000;
 
-// ✅ Исправление: используем ReturnType<typeof setTimeout> вместо NodeJS.Timeout
-let cacheCleanupInterval: ReturnType<typeof setTimeout> | null = null;
+const priceCache = new Map<string, { price: number; timestamp: number }>();
+let cacheCleanupInterval: ReturnType<typeof setInterval> | null = null;
 
 async function fetchWithTimeout(
   url: string,
@@ -36,7 +34,7 @@ async function fetchWithTimeout(
     const response = await fetch(url, {
       ...options,
       signal: controller.signal,
-      cache: 'no-store',
+      cache: 'no-cache',
     });
     clearTimeout(timeoutId);
     return response;
@@ -75,10 +73,9 @@ function getCachedPrice(symbol: string): number | null {
 
 function setCachedPrice(symbol: string, price: number): void {
   priceCache.set(symbol, { price, timestamp: Date.now() });
-  
+
   if (!cacheCleanupInterval) {
-    // ✅ Исправление: используем универсальный тип
-    cacheCleanupInterval = setInterval(clearExpiredCache, 60000);
+    cacheCleanupInterval = setInterval(() => clearExpiredCache(), 60000);
   }
 }
 
@@ -89,7 +86,7 @@ function clearExpiredCache(): void {
       priceCache.delete(symbol);
     }
   }
-  
+
   if (priceCache.size === 0 && cacheCleanupInterval) {
     clearInterval(cacheCleanupInterval);
     cacheCleanupInterval = null;
@@ -100,9 +97,9 @@ export async function getBinancePrice(symbol: string, useCache: boolean = true):
   if (!symbol || typeof symbol !== 'string') {
     throw new Error('Symbol must be a non-empty string');
   }
-  
+
   const normalizedSymbol = symbol.toUpperCase().trim();
-  
+
   if (useCache) {
     const cachedPrice = getCachedPrice(normalizedSymbol);
     if (cachedPrice !== null) {
@@ -114,9 +111,7 @@ export async function getBinancePrice(symbol: string, useCache: boolean = true):
     const response = await fetchWithTimeout(
       `/api/binance?symbol=${encodeURIComponent(normalizedSymbol)}`,
       {
-        headers: {
-          Accept: 'application/json',
-        },
+        headers: { Accept: 'application/json' },
       }
     );
 
@@ -165,7 +160,7 @@ export async function getBinancePriceWithRetry(
   }
   
   let lastError: Error | null = null;
-  const normalizedSymbol = symbol.toUpperCase();
+  const normalizedSymbol = symbol.toUpperCase().trim();
 
   for (let i = 0; i < retries; i++) {
     try {
@@ -173,21 +168,19 @@ export async function getBinancePriceWithRetry(
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       
-      const statusCode = (error as any).statusCode;
-      if (statusCode && statusCode >= 400 && statusCode < 500) {
+      // Don't retry on client errors (4xx)
+      if (error instanceof Error && error.message.includes('400') || error.message.includes('404')) {
         throw lastError;
       }
       
-      if (lastError.message.includes('Invalid response') || 
-          lastError.message.includes('Invalid price') ||
-          lastError.message.includes('non-empty string')) {
+      // Don't retry on validation errors
+      if (lastError.message.includes('Invalid')) {
         throw lastError;
       }
 
       if (i < retries - 1) {
-        const jitter = Math.random() * 100;
-        const backoffDelay = delayMs * Math.pow(2, i) + jitter;
-        await new Promise((resolve) => setTimeout(resolve, backoffDelay));
+        const backoff = delayMs * Math.pow(2, i) + Math.random() * 100;
+        await new Promise(resolve => setTimeout(resolve, backoff));
       }
     }
   }
@@ -219,6 +212,8 @@ export async function getMultipleBinancePrices(
     for (const result of batchResults) {
       if (result.status === 'fulfilled') {
         results.set(result.value.symbol, result.value.price);
+      } else {
+        console.error('Failed to fetch price:', result.reason);
       }
     }
     
@@ -240,7 +235,7 @@ export async function getSolPriceWithFallback(
   
   try {
     return await getSolPrice(useCache);
-  } catch (error) {
+  } catch {
     console.warn('Using fallback SOL price:', fallbackPrice);
     return fallbackPrice;
   }
@@ -267,9 +262,5 @@ export function getCacheStats(): { size: number; keys: string[] } {
 }
 
 export function cleanup(): void {
-  if (cacheCleanupInterval) {
-    clearInterval(cacheCleanupInterval);
-    cacheCleanupInterval = null;
-  }
-  priceCache.clear();
+  clearPriceCache();
 }
