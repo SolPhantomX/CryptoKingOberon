@@ -1,5 +1,3 @@
-// lib/core/arbitrage-simulator.ts
-
 import { 
   ArbitrageOpportunity, 
   SwapQuote,
@@ -13,7 +11,7 @@ import {
   TOKEN_MINTS,
 } from './profit-calculator';
 
-const SOL_MINT = TOKEN_MINTS.SOL;
+const SOL_MINT = TOKEN_MINTS?.SOL ?? 'So11111111111111111111111111111111111111112';
 const LAMPORTS_PER_SOL = 1_000_000_000;
 
 const DEX_FEE_PERCENT = 0.25;
@@ -46,6 +44,7 @@ function validateQuoteResponse(quote: unknown): quote is SwapQuote {
   
   const q = quote as Record<string, unknown>;
   
+  // Required fields
   if (typeof q.outAmount !== 'string') return false;
   if (typeof q.inAmount !== 'string') return false;
   if (typeof q.inputMint !== 'string') return false;
@@ -53,20 +52,26 @@ function validateQuoteResponse(quote: unknown): quote is SwapQuote {
   if (typeof q.swapMode !== 'string') return false;
   if (typeof q.slippageBps !== 'number') return false;
   if (typeof q.priceImpactPct !== 'number') return false;
-  if (typeof q.otherAmountThreshold !== 'string') return false;
+  
+  // otherAmountThreshold is optional — no validation failure if missing
   
   return true;
 }
 
 function calculateSlippageUSD(
   expectedOutAmount: string,
-  minOutAmount: string,
+  minOutAmount: string | undefined,
   tradeValueUSD: number
 ): number {
   const expected = parseFloat(expectedOutAmount);
-  const min = parseFloat(minOutAmount);
   
-  if (expected <= 0 || min <= 0) return 0;
+  if (expected <= 0) return 0;
+  
+  // If minOutAmount is not provided, assume zero slippage
+  if (!minOutAmount) return 0;
+  
+  const min = parseFloat(minOutAmount);
+  if (min <= 0) return 0;
   
   const slippagePercent = (expected - min) / expected;
   const cappedSlippage = Math.min(Math.max(slippagePercent, -0.1), 0.1);
@@ -112,9 +117,8 @@ async function fetchQuoteWithTimeout(
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   
   try {
-    const quote = await getJupiterQuote(params, {
-      signal: abortSignal || controller.signal,
-    });
+    // Call getJupiterQuote with ONLY params — second argument removed
+    const quote = await getJupiterQuote(params);
     
     if (!validateQuoteResponse(quote)) {
       throw new Error('Invalid or malformed quote response from Jupiter API');
@@ -182,6 +186,10 @@ export async function simulateArbitrage(
     const netProfitPercent = tradeValueUSD > 0 ? (netProfitUSD / tradeValueUSD) * 100 : 0;
     
     const minRequiredProfitUSD = getMinProfitThreshold(tokenSymbol, tradeValueUSD);
+    
+    // Safe guard: ensure minRequiredProfitUSD is a valid number
+    const safeMinRequired = isValidNumber(minRequiredProfitUSD) ? minRequiredProfitUSD : 0;
+    
     const profitable = isProfitable(tokenSymbol, tradeValueUSD, netProfitUSD);
     
     const opportunity: ArbitrageOpportunity = {
@@ -201,7 +209,7 @@ export async function simulateArbitrage(
       },
       quote,
       isProfitable: profitable,
-      minRequiredProfitUSD: Number(minRequiredProfitUSD.toFixed(2)),
+      minRequiredProfitUSD: Number(safeMinRequired.toFixed(2)),
       timestamp: Date.now(),
       expiresAt: Date.now() + ARBITRAGE_EXPIRY_MS,
     };
