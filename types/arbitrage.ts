@@ -1,3 +1,5 @@
+// types/arbitrage.ts
+
 export interface ProfitThreshold {
   minPercent: number;
   minAbsoluteUSD: number;
@@ -7,6 +9,8 @@ export interface TokenConfig {
   symbol: string;
   mint: string;
   name: string;
+  decimals: number;           // ✅ Added - required for token amount conversion
+  priceUSD?: number;          // ✅ Added - optional, can be updated dynamically
   isMemecoin: boolean;
   profitThreshold: ProfitThreshold;
 }
@@ -19,7 +23,7 @@ export interface SwapQuote {
   otherAmountThreshold: string;
   swapMode: 'ExactIn' | 'ExactOut';
   slippageBps: number;
-  priceImpactPct: number;
+  priceImpactPct: number;     // ✅ Will be used directly from quote
   routePlan: unknown[];
   timeTaken: number;
   contextSlot: number;
