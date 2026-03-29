@@ -1,32 +1,24 @@
 // lib/core/arbitrage-simulator.ts
 
-import { 
-  ArbitrageOpportunity, 
-  JupiterQuoteParams,
-} from '@/types/arbitrage';
-
+import { ArbitrageOpportunity, JupiterQuoteParams } from '@/types/arbitrage';
 import { getJupiterQuote } from '@/lib/api/jupiter';
 import { 
   getTokenConfig, 
   isProfitable, 
   getMinProfitThreshold,
-  TOKEN_MINTS,
+  TOKEN_MINTS 
 } from './profit-calculator';
 
 const SOL_MINT = TOKEN_MINTS.SOL;
 const USDC_MINT = TOKEN_MINTS.USDC;
 const LAMPORTS_PER_SOL = 1_000_000_000;
 
-const DEX_FEE_PERCENT = 0.25;
-const NETWORK_FEE_SOL = 0.000015;
-
-export async function simulateArbitrage(
-  params: {
-    tokenSymbol: string;
-    amountSOL: number;
-    solPriceUSD: number;
-  }
-): Promise<{ opportunity: ArbitrageOpportunity | null; error?: string }> {
+export async function simulateArbitrage(params: {
+  tokenSymbol: string;
+  amountSOL: number;
+  solPriceUSD: number;
+}): Promise<{ opportunity: ArbitrageOpportunity | null; error?: string }> {
+  
   const { tokenSymbol, amountSOL, solPriceUSD } = params;
 
   if (amountSOL <= 0.05) {
@@ -57,15 +49,15 @@ export async function simulateArbitrage(
 
     const grossProfitUSD = outAmountUSDC - tradeValueUSD;
 
-    const dexFeeUSD = tradeValueUSD * (DEX_FEE_PERCENT / 100);
+    const dexFeeUSD = tradeValueUSD * 0.0025;
     const slippageUSD = tradeValueUSD * 0.005;
     const priceImpactUSD = tradeValueUSD * 0.005;
-    const networkFeeUSD = NETWORK_FEE_SOL * solPriceUSD;
+    const networkFeeUSD = 0.000015 * solPriceUSD;
 
     const totalFeesUSD = dexFeeUSD + slippageUSD + priceImpactUSD + networkFeeUSD + 0.25;
 
     const netProfitUSD = grossProfitUSD - totalFeesUSD;
-    const netProfitPercent = (netProfitUSD / tradeValueUSD) * 100;
+    const netProfitPercent = tradeValueUSD > 0 ? (netProfitUSD / tradeValueUSD) * 100 : 0;
 
     const minRequired = getMinProfitThreshold(tokenSymbol, tradeValueUSD);
     const profitable = isProfitable(tokenSymbol, tradeValueUSD, netProfitUSD);
