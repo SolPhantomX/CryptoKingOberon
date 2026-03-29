@@ -1,5 +1,3 @@
-// types/arbitrage.ts
-
 export interface ProfitThreshold {
   minPercent: number;
   minAbsoluteUSD: number;
@@ -9,10 +7,9 @@ export interface TokenConfig {
   symbol: string;
   mint: string;
   name: string;
-  decimals: number;           // ✅ Added - required for token amount conversion
-  priceUSD?: number;          // ✅ Added - optional, can be updated dynamically
   isMemecoin: boolean;
   profitThreshold: ProfitThreshold;
+  // REMOVED: decimals and priceUSD — not present in your actual data
 }
 
 export interface SwapQuote {
@@ -20,10 +17,10 @@ export interface SwapQuote {
   outputMint: string;
   inAmount: string;
   outAmount: string;
-  otherAmountThreshold: string;
+  otherAmountThreshold?: string;  // ✅ Made optional — Jupiter may not always return it
   swapMode: 'ExactIn' | 'ExactOut';
   slippageBps: number;
-  priceImpactPct: number;     // ✅ Will be used directly from quote
+  priceImpactPct: number;
   routePlan: unknown[];
   timeTaken: number;
   contextSlot: number;
